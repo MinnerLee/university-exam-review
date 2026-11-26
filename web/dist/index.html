@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="按考点查数学分析笔记，分步读例题并做自测。">
+  <title>数分复习簿</title>
+  <link rel="stylesheet" href="math/katex.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="notes.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main" id="skip-main">跳到正文</a>
+  <header class="topbar">
+    <div class="top-inner">
+      <a class="brand" href="#home"><span class="brand-icon" aria-hidden="true">ƒ</span>数分复习簿</a>
+      <nav aria-label="主导航" class="tabs">
+        <a href="#home" data-tab="home">复习首页</a>
+        <a href="#topics" data-tab="topics">考点笔记</a>
+        <a href="#examples" data-tab="examples">例题库</a>
+        <a href="#quiz" data-tab="quiz">随堂自测</a>
+      </nav>
+      <button class="search-open" type="button" aria-label="搜索笔记"><span aria-hidden="true" class="search-icon"></span><span class="search-label">搜索笔记</span><kbd>/</kbd></button>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="复习目录">
+      <div class="side-title">复习目录</div>
+      <nav id="chapter-nav" aria-label="考点目录"></nav>
+      <div class="side-title supplemental">题目索引</div>
+      <nav id="index-nav" aria-label="题目索引"></nav>
+    </aside>
+    <main id="main" tabindex="-1"></main>
+  </div>
+  <dialog id="search-dialog" aria-labelledby="search-title">
+    <div class="dialog-title"><h2 id="search-title">搜索笔记</h2><button class="button quiet" type="button" id="search-close">关闭</button></div>
+    <input id="search-query" type="search" aria-label="考点、题号或关键词" placeholder="试试「间断点」「泰勒」「2.2.91」" autocomplete="off">
+    <div id="search-results" class="search-results" aria-live="polite"></div>
+  </dialog>
+  <noscript>请启用 JavaScript 以使用目录、搜索和自测。</noscript>
+</body>
+</html>
