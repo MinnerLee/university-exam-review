@@ -164,7 +164,10 @@ function topicList(group) {
 }
 
 function exampleList() {
-  return heading('例题库', `${examples.length} 道代表例题。可以按题号或关键词找题。`) + `<div class="field"><input id="example-query" type="search" aria-label="筛选例题" placeholder="搜索例题，例如「二阶导数」「2.2.91」"></div><div class="filters" aria-label="例题状态">${Object.entries({ all: '全部例题', saved: '待复习', done: '已完成' }).map(([id, label]) => `<button type="button" class="button" data-filter="${id}" aria-pressed="${exampleFilter === id}">${label}</button>`).join('')}${button('example-topics', '按题型选题')}</div><div id="example-results" class="section row-list"></div>`;
+  return heading('例题库') + `<section class="example-sources">
+    <a class="card" href="#papers"><h2>历年真题</h2><p>${examPapers.count} 套试卷 · ${examPapers.questionCount} 个题号可查</p></a>
+    <a class="card" href="#example-topics"><h2>代表例题</h2><p>${examples.length} 道带解析例题 · 按题型复习</p></a>
+  </section><div class="field section"><input id="example-query" type="search" aria-label="筛选代表例题" placeholder="搜索代表例题，例如「二阶导数」「2.2.91」"></div><div class="filters" aria-label="例题状态">${Object.entries({ all: '全部代表例题', saved: '待复习', done: '已完成' }).map(([id, label]) => `<button type="button" class="button" data-filter="${id}" aria-pressed="${exampleFilter === id}">${label}</button>`).join('')}</div><div id="example-results" class="section row-list"></div>`;
 }
 
 function normalize(value) {
@@ -178,7 +181,8 @@ function matches(entry, query) {
 function renderExampleResults() {
   const query = document.querySelector('#example-query').value;
   const result = examples.filter(entry => (exampleFilter === 'all' || state[exampleFilter].includes(entry.id)) && matches(entry, query));
-  document.querySelector('#example-results').innerHTML = result.map(entry => row(entry, state.done.includes(entry.id) ? '已完成' : state.saved.includes(entry.id) ? '待复习' : '')).join('') || '<p class="muted">这里暂时没有符合条件的例题。</p>';
+  const papers = exampleFilter === 'all' ? [] : examPapers.marked(state[exampleFilter], query);
+  document.querySelector('#example-results').innerHTML = [...result, ...papers].map(entry => row(entry, state.done.includes(entry.id) ? '已完成' : state.saved.includes(entry.id) ? '待复习' : '')).join('') || '<p class="muted">这里暂时没有符合条件的例题。</p>';
   for (const filter of main.querySelectorAll('[data-filter]')) filter.setAttribute('aria-pressed', filter.dataset.filter === exampleFilter);
 }
 
@@ -192,7 +196,7 @@ function article(entry) {
   const relatedHtml = related.length ? `<section class="section"><div class="section-heading"><h2>配套例题</h2></div><div class="row-list">${related.map(candidate => row(candidate, '例题')).join('')}</div></section>` : '';
   const previous = examples[examples.indexOf(entry) - 1];
   const next = examples[examples.indexOf(entry) + 1];
-  return heading(entry.title, '', back) + `<article class="article">${entry.html}${entry.solution ? `<details><summary>展开思路与解析</summary>${entry.solution}</details>` : ''}</article>` + (isExample ? `<div class="actions article-actions"><div class="actions"><button type="button" class="button" data-toggle="saved" aria-pressed="${state.saved.includes(entry.id)}">${state.saved.includes(entry.id) ? '已加入待复习' : '加入待复习'}</button><button type="button" class="button" data-toggle="done" aria-pressed="${state.done.includes(entry.id)}">${state.done.includes(entry.id) ? '已完成' : '标记完成'}</button></div><div class="actions">${previous ? button(previous.id, '上一题') : ''}${next ? button(next.id, '下一题') : ''}</div></div>` : relatedHtml);
+  return heading(entry.title, '', back) + `<article class="article">${entry.html}${entry.solution ? `<details><summary>展开思路与解析</summary>${entry.solution}</details>` : ''}</article>` + (isExample ? `<div class="actions article-actions example-actions"><div class="actions"><button type="button" class="button" data-toggle="saved" aria-pressed="${state.saved.includes(entry.id)}">${state.saved.includes(entry.id) ? '已加入待复习' : '加入待复习'}</button><button type="button" class="button" data-toggle="done" aria-pressed="${state.done.includes(entry.id)}">${state.done.includes(entry.id) ? '已完成' : '标记完成'}</button></div><div class="actions">${previous ? button(previous.id, '上一题') : ''}${next ? button(next.id, '下一题') : ''}</div></div>` : relatedHtml);
 }
 
 function quizView(id) {
@@ -253,17 +257,23 @@ function quizView(id) {
       const style = answered && index === item.answer ? 'correct' : answered && position === entry.choice ? 'wrong' : '';
       return `<button type="button" data-option="${position}" class="button option ${style}" ${answered ? 'disabled' : ''}><b>${'ABCD'[position]}</b><span>${safe(item.options[index])}</span></button>`;
     }).join('')}</div><div class="feedback" aria-live="polite">${answered ? `<strong>${correct ? '答对了。' : '正确答案是 ' + answerLetter + '。'}</strong> ${safe(item.feedback)} <a href="#${item.topic}">回看考点</a>` : ''}</div>
-    <div class="actions">${round.index > 0 ? '<button type="button" class="button" data-quiz="previous">上一题</button>' : ''}
+    <div class="actions quiz-actions">${round.index > 0 ? '<button type="button" class="button" data-quiz="previous">上一题</button>' : ''}
       <button type="button" class="button primary" data-quiz="${last ? 'submit' : 'next'}" ${answered ? '' : 'disabled'}>${last ? '交卷并查看结果' : '下一题'}</button>${historyLink}</div></article>`;
 }
 
-function route(resetScroll = true) {
+function currentRoute() {
   const hash = location.hash.slice(1);
+  try { return decodeURIComponent(hash); } catch { return hash; }
+}
+
+function route(resetScroll = true) {
+  const hash = currentRoute();
   const id = hash === 'worked-examples' ? 'examples' : hash || 'home';
   const entry = byId.get(id);
   const group = groups.find(item => item.id === id);
   const isQuiz = id === 'quiz' || id === 'quiz-history' || id.startsWith('quiz-result/');
-  const tab = isQuiz ? 'quiz' : id === 'examples' || examples.includes(entry) || indexes.includes(id) ? 'examples' : id === 'topics' || entry ? 'topics' : 'home';
+  const isPaper = id === 'papers' || id.startsWith('paper/');
+  const tab = isQuiz ? 'quiz' : isPaper || id === 'examples' || examples.includes(entry) || indexes.includes(id) ? 'examples' : id === 'topics' || entry ? 'topics' : 'home';
   for (const link of document.querySelectorAll('[data-tab]')) {
     if (link.dataset.tab === tab) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
@@ -273,6 +283,7 @@ function route(resetScroll = true) {
     else link.removeAttribute('aria-current');
   }
   if (isQuiz) main.innerHTML = quizView(id);
+  else if (isPaper) { main.innerHTML = examPapers.view(id); examPapers.renderList(); }
   else if (id === 'examples') { main.innerHTML = exampleList(); renderExampleResults(); }
   else if (id === 'topics' || group) main.innerHTML = topicList(group);
   else if (entry) {
@@ -304,7 +315,7 @@ function openSearch() {
 }
 
 document.querySelector('#chapter-nav').innerHTML = groups.map(group => `<a class="side-group" href="#${group.id}">${group.title}</a>${group.topics.map(id => byId.get(id)).filter(Boolean).map(entry => `<a class="side-topic" href="#${entry.id}">${safe(entry.title)}</a>`).join('')}`).join('');
-document.querySelector('#index-nav').innerHTML = indexes.map(id => byId.get(id)).filter(Boolean).map(entry => `<a href="#${entry.id}">${safe(entry.title)}</a>`).join('');
+document.querySelector('#index-nav').innerHTML = '<a href="#papers">历年真题</a>' + indexes.map(id => byId.get(id)).filter(Boolean).map(entry => `<a href="#${entry.id}">${safe(entry.title)}</a>`).join('');
 document.querySelector('#skip-main').addEventListener('click', event => {
   event.preventDefault(); main.focus();
 });
@@ -332,7 +343,7 @@ main.addEventListener('click', event => {
   const { filter, toggle, option, quiz: action } = target.dataset;
   if (filter) { exampleFilter = filter; renderExampleResults(); }
   if (toggle) {
-    const id = location.hash.slice(1);
+    const id = currentRoute();
     const present = state[toggle].includes(id);
     state[toggle] = present ? state[toggle].filter(key => key !== id) : [...state[toggle], id];
     target.setAttribute('aria-pressed', String(!present));
@@ -356,4 +367,5 @@ main.addEventListener('click', event => {
 window.addEventListener('hashchange', () => { route(); main.focus(); });
 window.addEventListener('resize', drawHero);
 syncThemeIcon();
+examPapers.bind(main);
 route();

@@ -3,13 +3,11 @@
 这是数学分析与高等数学的复习笔记。笔记按做题方法归类，收录 64 道带推导的代表例题。
 
 - [在线使用数分复习簿](https://minnerlee.github.io/university-exam-review/)
-- [下载 v1.2.1 离线复习网页](https://github.com/MinnerLee/university-exam-review/releases/tag/v1.2.1)
+- [打开历年真题](https://minnerlee.github.io/university-exam-review/#papers)
+- [下载 v1.2.5 离线复习网页](https://github.com/MinnerLee/university-exam-review/releases/tag/v1.2.5)
 - [打开完整笔记](calculus-exam-review-notes.md)
 - [按学习顺序查目录](calculus-exam-review-notes.md#study-navigation)
 - [按题型选一道例题](calculus-exam-review-notes.md#example-topics)
-- [查看 2026 期中串讲页码索引](calculus-exam-review-notes.md#midterm-deck)
-- [查看第二章作业索引](calculus-exam-review-notes.md#chapter-2-homework)
-- [查看第二章习题索引与勘误](calculus-exam-review-notes.md#chapter-2-problems)
 
 ## 复习范围
 
