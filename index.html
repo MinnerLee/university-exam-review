@@ -16,11 +16,13 @@
     })();
   </script>
   <link rel="stylesheet" href="math/katex.min.css">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=125">
   <script defer src="notes.js"></script>
   <script defer src="quiz-bank.js?v=2"></script>
   <script defer src="quiz.js?v=2"></script>
-  <script defer src="app.js?v=2"></script>
+  <script defer src="papers-index.js?v=125"></script>
+  <script defer src="papers.js?v=125"></script>
+  <script defer src="app.js?v=125"></script>
 </head>
 <body>
   <a class="skip" href="#main" id="skip-main">跳到正文</a>
@@ -66,6 +68,22 @@
       </footer>
     </div>
   </div>
+  <input id="paper-file" type="file" accept=".pdf,application/pdf" hidden>
+  <dialog id="paper-reader" aria-labelledby="paper-reader-title">
+    <div class="dialog-title">
+      <h2 id="paper-reader-title">原卷 PDF</h2>
+      <button type="button" class="button" id="paper-reader-close">返回做题</button>
+    </div>
+    <div class="actions paper-reader-controls">
+      <button type="button" class="button" data-page-step="-1">上一页</button>
+      <span id="paper-page" aria-live="polite"></span>
+      <button type="button" class="button" data-page-step="1">下一页</button>
+      <button type="button" class="button" id="paper-zoom" aria-pressed="false">放大</button>
+      <a id="paper-native-link" target="_blank" rel="noopener">在新标签页打开</a>
+    </div>
+    <p id="paper-reader-status" class="muted" role="status"></p>
+    <div id="paper-canvas-wrap"><canvas id="paper-canvas" aria-label="原卷页面"></canvas></div>
+  </dialog>
   <dialog id="search-dialog" aria-labelledby="search-title">
     <div class="dialog-title">
       <h2 id="search-title"><span class="title-bar" aria-hidden="true"></span>搜索笔记</h2>

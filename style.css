@@ -929,6 +929,41 @@ dialog::backdrop {
 }
 
 /* ---------- Responsive Breakpoints ---------- */
+.example-sources,
+.paper-filters {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.example-sources h2 { margin-bottom: 4px; }
+.paper-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 1rem 0; }
+.paper-filters label { display: grid; gap: 5px; font-size: .9rem; }
+.paper-filters select {
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+.paper-source { margin-top: 1rem; overflow-wrap: anywhere; }
+.paper-actions, .example-actions, .quiz-actions { padding: 10px 0; }
+.paper-actions nav, .example-actions nav { flex-wrap: nowrap; }
+.paper-actions nav .row-meta { white-space: nowrap; }
+#paper-reader[open] {
+  display: flex;
+  flex-direction: column;
+  width: min(880px, calc(100% - 24px));
+  max-height: 92dvh;
+}
+#paper-reader .dialog-title { flex-shrink: 0; }
+.paper-reader-controls { margin-bottom: 8px; }
+#paper-reader-status:empty { display: none; }
+#paper-canvas-wrap { min-height: 0; overflow: auto; overscroll-behavior: contain; }
+#paper-canvas:not([hidden]) { display: block; width: 100%; background: #fff; }
+
 @media (max-width: 1050px) {
   .layout { grid-template-columns: 200px minmax(0, 1fr); gap: 22px; padding-inline: 20px; }
   .top-inner { gap: 20px; padding-inline: 20px; }
@@ -950,6 +985,25 @@ dialog::backdrop {
   .section { margin-top: 22px; }
   .section-heading { flex-wrap: wrap; }
   .colophon { flex-direction: column; align-items: flex-start; }
+  input[type=search] { min-height: 44px; font-size: 1rem; }
+  .paper-filters select { font-size: 1rem; }
+  .example-sources .card { padding: 12px; }
+  .example-sources h2 { font-size: 1.06rem; }
+  .example-sources p { font-size: .87rem; }
+  .paper-actions, .example-actions, .quiz-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+    background: var(--page);
+    border-top: 1px solid var(--line);
+  }
+  .paper-actions > .actions { width: 100%; }
+  .paper-actions nav, .example-actions nav { justify-content: space-between; }
+  .paper-actions .button, .example-actions .button, .quiz-actions .button, .quiz-options .button { min-height: 44px; }
+  .paper-actions nav .row-meta { margin: auto; }
+  .quiz-options .option { font-size: 1rem; }
+  #paper-reader[open] { padding: 12px; width: calc(100% - 12px); max-height: 96dvh; }
 }
 
 @media (max-width: 440px) {
