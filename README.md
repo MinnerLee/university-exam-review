@@ -4,7 +4,7 @@
 
 - [在线使用数分复习簿](https://minnerlee.github.io/university-exam-review/)
 - [打开历年真题](https://minnerlee.github.io/university-exam-review/#papers)
-- [下载 v1.2.5 离线复习网页](https://github.com/MinnerLee/university-exam-review/releases/tag/v1.2.5)
+- [下载 v1.2.6 离线复习网页](https://github.com/MinnerLee/university-exam-review/releases/tag/v1.2.6)
 - [打开完整笔记](calculus-exam-review-notes.md)
 - [按学习顺序查目录](calculus-exam-review-notes.md#study-navigation)
 - [按题型选一道例题](calculus-exam-review-notes.md#example-topics)

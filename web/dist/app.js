@@ -71,90 +71,56 @@ function groupCards() {
 function home() {
   const visited = state.recent.filter(id => byId.has(id)).slice(0, 3).map(id => byId.get(id));
   const starter = ['continuity', 'derivative-definition', 'common-maclaurin'].map(id => byId.get(id)).filter(Boolean);
-  return `<section class="hero"><div class="hero-copy"><div class="overline">数学分析 · 高等数学</div><h1>数分复习簿</h1><p>查考点，顺着例题推一遍，再做几道自测。</p><div class="actions">${button(visited[0]?.id ?? 'topics', visited.length ? '继续上次复习' : '开始复习', 'primary')}${button('quiz', '做一组自测', 'quiet')}</div></div><canvas id="curve-art" aria-hidden="true"></canvas></section>
+  const finishedExamples = examples.filter(entry => state.done.includes(entry.id)).length;
+  return `<section class="hero"><div class="hero-copy"><div class="overline">数学分析 / 高等数学</div><h1>数分复习簿</h1><p>查考点，顺着例题推一遍，再做几道自测。</p><div class="actions">${button(visited[0]?.id ?? 'topics', visited.length ? '继续上次复习' : '开始复习', 'primary')}${button('quiz', '做一组自测', 'quiet')}${button('papers', '刷历年真题', 'quiet')}</div></div><figure class="hero-graph"><canvas id="curve-art" role="img" aria-label="抛物线 y=x² 及其在 (1,1) 处的切线"></canvas><figcaption>y = x² <span>在 (1, 1) 处的切线</span></figcaption></figure></section>
     <section class="section"><div class="section-heading"><h2>按章节复习</h2><a href="#topics">查看全部考点</a></div>${groupCards()}</section>
     <section class="section"><div class="section-heading"><h2>${visited.length ? '最近复习' : '先从这几个考点开始'}</h2></div><div class="row-list">${(visited.length ? visited : starter).map(entry => row(entry)).join('')}</div></section>
-    <section class="section card progress-card"><h2>例题进度</h2><span class="row-meta is-done">已完成 ${state.done.length} / ${examples.length}</span><progress value="${state.done.length}" max="${examples.length}" aria-label="例题完成进度"></progress><p>可在例题里标记完成或加入待复习。</p><a href="#examples">打开例题库</a></section>`;
+    <section class="section card progress-card"><h2>代表例题进度</h2><span class="row-meta is-done">已完成 ${finishedExamples} / ${examples.length}</span><progress value="${finishedExamples}" max="${examples.length}" aria-label="代表例题完成进度"></progress><p>可在例题里标记完成或加入待复习。</p><a href="#examples">打开例题库</a></section>`;
 }
 
-/* Signature 大邮数学集 radial multi-hue mathematical rosette + central ∫ */
 function drawHero() {
   const canvas = document.querySelector('#curve-art');
-  if (!canvas) return;
-  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!canvas || !canvas.clientWidth) return;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const ratio = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = width * ratio;
+  canvas.height = height * ratio;
   const ctx = canvas.getContext('2d');
-  if (!ctx || !w || !h) return;
-  const ratio = devicePixelRatio || 1;
-  canvas.width = w * ratio;
-  canvas.height = h * ratio;
+  if (!ctx) return;
   ctx.scale(ratio, ratio);
-  ctx.clearRect(0, 0, w, h);
-
-  const cx = w * 0.54;
-  const cy = h * 0.5;
-  const R = Math.min(w, h) * 0.44;
-
-  // Soft ambient emerald radial glow behind the rosette
-  const glow = ctx.createRadialGradient(cx, cy, R * 0.08, cx, cy, R * 1.15);
-  glow.addColorStop(0, 'rgba(52, 211, 153, 0.16)');
-  glow.addColorStop(0.55, 'rgba(16, 185, 129, 0.05)');
-  glow.addColorStop(1, 'rgba(2, 44, 34, 0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, w, h);
-
-  // Exact 10-stop pastel spectrum extracted from 大邮数学集-1.5.0.pdf Page 1 cover
-  const spectrum = [
-    '#a3e635', '#facc15', '#fbbf24', '#fb923c', '#fb7185',
-    '#e879f9', '#a78bfa', '#38bdf8', '#2dd4bf', '#34d399',
-  ];
-
-  // Layered parametric rose/spirograph petals
-  const layers = 20;
-  ctx.lineWidth = 0.95;
-  for (let i = 0; i < layers; i++) {
-    const color = spectrum[i % spectrum.length];
-    const rot = (i / layers) * Math.PI * 2;
-    const scale = 0.72 + 0.28 * Math.sin((i / layers) * Math.PI);
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(rot);
-    ctx.strokeStyle = color;
-    ctx.globalAlpha = 0.34;
+  const unit = Math.min(width / 5.6, height / 4.5);
+  const x = value => width * .45 + value * unit;
+  const y = value => height * .73 - value * unit;
+  function line(x1, y1, x2, y2) {
     ctx.beginPath();
-    const steps = 120;
-    for (let s = 0; s <= steps; s++) {
-      const t = (s / steps) * Math.PI * 2;
-      const r = R * scale * (0.48 + 0.42 * Math.cos(3 * t));
-      const x = r * Math.cos(t);
-      const y = r * Math.sin(t) * 0.78;
-      if (s === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
+    ctx.moveTo(x(x1), y(y1));
+    ctx.lineTo(x(x2), y(y2));
     ctx.stroke();
-    ctx.restore();
   }
-
-  // Subtle geometric reference ring
-  ctx.save();
-  ctx.strokeStyle = 'rgba(209, 250, 229, 0.16)';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([4, 6]);
+  ctx.strokeStyle = '#b0cde32b';
+  for (let tick = -3; tick <= 4; tick++) {
+    line(tick, -2, tick, 5);
+    line(-4, tick, 5, tick);
+  }
+  ctx.strokeStyle = '#c8dceb8c';
+  line(-4, 0, 5, 0);
+  line(0, -2, 0, 5);
+  ctx.strokeStyle = '#f3aa99';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  line(-1, -3, 3, 5);
+  ctx.setLineDash([]);
+  ctx.strokeStyle = '#9fd6ea';
+  ctx.lineWidth = 2.75;
   ctx.beginPath();
-  ctx.arc(cx, cy, R * 0.94, 0, Math.PI * 2);
+  ctx.moveTo(x(-2.3), y(2.3 ** 2));
+  for (let t = -2.27; t <= 2.3; t += .03) ctx.lineTo(x(t), y(t * t));
   ctx.stroke();
-  ctx.restore();
-
-  // Central Serif Integral Emblem (∫) matching 大邮数学集 cover
-  ctx.save();
-  ctx.fillStyle = '#d1fae5';
-  ctx.shadowColor = 'rgba(2, 44, 34, 0.85)';
-  ctx.shadowBlur = 18;
-  ctx.font = `600 ${Math.round(R * 1.08)}px "STIX Two Text", "Source Han Serif SC", Georgia, serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('∫', cx, cy + R * 0.04);
-  ctx.restore();
+  ctx.fillStyle = '#f3aa99';
+  ctx.beginPath();
+  ctx.arc(x(1), y(1), 4.5, 0, 2 * Math.PI);
+  ctx.fill();
 }
 
 function topicList(group) {
