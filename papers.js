@@ -212,5 +212,9 @@ const examPapers = (() => {
     });
   }
 
-  return { count: papers.length, questionCount: papers.reduce((count, paper) => count + paper.questions.length, 0), view, renderList, bind, marked };
+  return {
+    count: papers.length, questionCount: papers.reduce((count, paper) => count + paper.questions.length, 0),
+    view, renderList, bind, marked, sourceLink, original,
+    get fileName() { return pdfName; },
+  };
 })();

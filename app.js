@@ -1,10 +1,69 @@
 const notes = globalThis.studyNotes;
 const byId = new Map(notes.map(entry => [entry.id, entry]));
-const groups = [
-  { id: 'limits-continuity', title: '极限与连续', summary: '等价无穷小、幂式极限、数列、间断点', topics: ['basic-limits', 'simplify-expand', 'power-limits', 'estimates', 'limit-constraints', 'continuity'] },
-  { id: 'derivatives-differentials', title: '导数与微分', summary: '左右导数、参数求导、高阶导数、相关变化率', topics: ['derivative-definition', 'differentiation', 'inverse-functions', 'curves', 'higher-derivatives', 'differentials', 'curvature'] },
-  { id: 'mean-value-taylor', title: '中值定理与函数性态', summary: '罗尔定理、泰勒展开、单调性、极值与拐点', topics: ['proof-techniques', 'taylor-methods', 'function-behavior', 'optimization', 'concavity'] },
+const chapterSummaries = {
+  'limits-continuity': '等价无穷小、幂式极限、数列、间断点',
+  'derivatives-differentials': '左右导数、参数求导、高阶导数、相关变化率',
+  'mean-value-taylor': '罗尔定理、泰勒展开、单调性、极值与拐点',
+};
+const groups = [];
+const sectionByRoute = new Map();
+let currentSection;
+let currentPoint;
+for (const entry of notes) {
+  if (entry.id === 'worked-examples') break;
+  if (entry.level === 2 && entry.id !== 'study-navigation') {
+    groups.push({ ...entry, title: entry.title.replace(/^[一二三四五六七八九十]+、/, ''), summary: chapterSummaries[entry.id] ?? '', sections: [] });
+    currentSection = null;
+  } else if (entry.level === 3 && groups.length) {
+    currentSection = { ...entry, chapterId: groups.at(-1).id, points: [] };
+    groups.at(-1).sections.push(currentSection);
+    currentPoint = null;
+  } else if (entry.level === 4 && currentSection) {
+    currentPoint = { ...entry, points: [] };
+    currentSection.points.push(currentPoint);
+  }
+  if (entry.level < 3 || !currentSection) continue;
+  sectionByRoute.set(entry.id, currentSection);
+  for (const point of entry.outline ?? []) {
+    const item = { id: entry.id + '/point-' + point.index, title: point.title, points: [] };
+    if (point.level === 5 && currentPoint) currentPoint.points.push(item);
+    else { currentSection.points.push(item); currentPoint = item; }
+    sectionByRoute.set(item.id, currentSection);
+  }
+}
+function topicLabel(title) {
+  return title
+    .replace('(\$u\\to0\$)', '')
+    .replace('（$u\\to0$）', '（u → 0）')
+    .replace('$\\ln(x+\\sqrt{x^2+c})$', 'ln(x + √(x² + c))')
+    .replace("$f''-\\lambda^2 f=0$", 'f″ − λ²f = 0')
+    .replace(/\$[^$]+\$/g, '公式');
+}
+const otherTopicOrder = [
+  'midterm-sequences', 'lhopital-conditions', 'asymptote-patterns', 'log-radical-derivative',
+  'related-rates', 'rolle-basics', 'mean-value-proofs', 'inequalities-roots',
+  'taylor-composition', 'common-maclaurin', 'geometric-series', 'taylor-proofs',
 ];
+const otherTopics = { id: 'other-topics', chapterId: 'other-topics', title: '其它考点', points: [] };
+const otherTopicRanks = new Map(otherTopicOrder.map((id, index) => [id, index + 1]));
+for (const chapter of groups) {
+  for (const section of chapter.sections) {
+    section.points = section.points.filter(point => {
+      if (!otherTopicRanks.has(point.id)) return true;
+      otherTopics.points.push(point);
+      sectionByRoute.set(point.id, otherTopics);
+      for (const child of point.points) sectionByRoute.set(child.id, otherTopics);
+      return false;
+    });
+  }
+}
+otherTopics.points.sort((a, b) => otherTopicRanks.get(a.id) - otherTopicRanks.get(b.id));
+
+function numberedTopicTitle(id, title) {
+  const rank = otherTopicRanks.get(id);
+  const label = topicLabel(title);
+  return rank ? `考点 ${rank}：${label.replace(/^考点\s*\d+[：:]\s*/, '')}` : label;
+}
 const indexes = ['example-topics', 'midterm-deck', 'chapter-2-problems', 'chapter-2-homework'];
 const examples = notes.filter(entry => /^example-\d/.test(entry.id));
 
@@ -53,7 +112,8 @@ function metaClass(meta) {
 }
 
 function row(entry, meta = '') {
-  return `<a class="row" href="#${entry.id}"><strong>${safe(entry.title)}</strong>${meta ? `<span class="row-meta${metaClass(meta)}">${safe(meta)}</span>` : ''}</a>`;
+  const title = otherTopicRanks.has(entry.id) ? numberedTopicTitle(entry.id, entry.title) : entry.title;
+  return `<a class="row" href="#${entry.id}"><strong>${safe(title)}</strong>${meta ? `<span class="row-meta${metaClass(meta)}">${safe(meta)}</span>` : ''}</a>`;
 }
 
 function button(href, label, variant = '') {
@@ -72,7 +132,7 @@ function home() {
   const visited = state.recent.filter(id => byId.has(id)).slice(0, 3).map(id => byId.get(id));
   const starter = ['continuity', 'derivative-definition', 'common-maclaurin'].map(id => byId.get(id)).filter(Boolean);
   const finishedExamples = examples.filter(entry => state.done.includes(entry.id)).length;
-  return `<section class="hero"><div class="hero-copy"><div class="overline">数学分析 / 高等数学</div><h1>数分复习簿</h1><p>查考点，顺着例题推一遍，再做几道自测。</p><div class="actions">${button(visited[0]?.id ?? 'topics', visited.length ? '继续上次复习' : '开始复习', 'primary')}${button('quiz', '做一组自测', 'quiet')}${button('papers', '刷历年真题', 'quiet')}</div></div><figure class="hero-graph"><canvas id="curve-art" role="img" aria-label="抛物线 y=x² 及其在 (1,1) 处的切线"></canvas><figcaption>y = x² <span>在 (1, 1) 处的切线</span></figcaption></figure></section>
+  return `<section class="hero"><div class="hero-copy"><div class="overline">数学分析 / 高等数学</div><h1>数分复习簿</h1><p>查考点，顺着例题推一遍，再做几道自测。</p><div class="actions">${button(visited[0]?.id ?? 'topics', visited.length ? '继续上次复习' : '开始复习', 'primary')}${button('quiz-small', '做一组小测', 'quiet')}${button('papers', '刷历年真题', 'quiet')}</div></div><figure class="hero-graph"><canvas id="curve-art" role="img" aria-label="抛物线 y=x² 及其在 (1,1) 处的切线"></canvas><figcaption>y = x² <span>在 (1, 1) 处的切线</span></figcaption></figure></section>
     <section class="section"><div class="section-heading"><h2>按章节复习</h2><a href="#topics">查看全部考点</a></div>${groupCards()}</section>
     <section class="section"><div class="section-heading"><h2>${visited.length ? '最近复习' : '先从这几个考点开始'}</h2></div><div class="row-list">${(visited.length ? visited : starter).map(entry => row(entry)).join('')}</div></section>
     <section class="section card progress-card"><h2>代表例题进度</h2><span class="row-meta is-done">已完成 ${finishedExamples} / ${examples.length}</span><progress value="${finishedExamples}" max="${examples.length}" aria-label="代表例题完成进度"></progress><p>可在例题里标记完成或加入待复习。</p><a href="#examples">打开例题库</a></section>`;
@@ -123,10 +183,49 @@ function drawHero() {
   ctx.fill();
 }
 
+function pointLinks(points, active = '') {
+  if (!points.length) return '';
+  return `<ul class="directory-points">${points.map(point => {
+    const title = otherTopicRanks.has(point.id) ? numberedTopicTitle(point.id, point.title) : topicLabel(point.title).replace(/^考点\s*\d+[：:]\s*/, '');
+    return `<li><a href="#${point.id}"${point.id === active ? ' aria-current="location"' : ''}>${safe(title)}</a>${pointLinks(point.points, active)}</li>`;
+  }).join('')}</ul>`;
+}
+
+function sectionLink(section) {
+  const title = topicLabel(section.title);
+  const [, number, label] = title.match(/^(\d+\.\d+)\s+(.+)$/) ?? ['', '', title];
+  return `<a class="directory-section-link" href="#${section.id}">${number ? '<span class="directory-number">' + number + '</span>' : ''}<span>${safe(label)}</span></a>`;
+}
+
+function directoryChapter(chapter, isOverview) {
+  return `<section class="directory-chapter">
+    ${isOverview ? `<header><h2><a href="#${chapter.id}">${safe(chapter.title)}</a></h2><p>${safe(chapter.summary)}</p></header>` : ''}
+    <ul class="directory-sections">${chapter.sections.map(section => `<li>${sectionLink(section)}
+      ${section.points.length ? `<details class="directory-details"><summary aria-label="${safe(topicLabel(section.title))}的小考点">${section.points.length} 个考点</summary>
+        ${pointLinks(section.points)}</details>` : ''}</li>`).join('')}</ul></section>`;
+}
+
 function topicList(group) {
-  const topics = item => `<div class="row-list">${item.topics.map(id => byId.get(id)).filter(Boolean).map(entry => row(entry)).join('')}</div>`;
-  if (group) return heading(group.title, group.summary, '<p class="breadcrumb"><a href="#topics">← 考点笔记</a></p>') + topics(group);
-  return heading('考点笔记', '按章节查找公式、做题步骤和易错点。') + groups.map(item => `<section class="section"><div class="section-heading"><h2>${item.title}</h2></div>${topics(item)}</section>`).join('');
+  if (group) return heading(group.title, group.summary, '<p class="breadcrumb"><a href="#topics">复习目录</a></p>') + directoryChapter(group, false);
+  return heading('复习目录') + `<div class="directory-overview">${groups.map(chapter => directoryChapter(chapter, true)).join('')}${otherTopicPanel(true)}</div>`;
+}
+
+function otherTopicPanel(isOverview) {
+  return `<section class="directory-chapter directory-other">
+    ${isOverview ? '<header><h2><a href="#other-topics">其它考点</a></h2></header>' : ''}
+    ${pointLinks(otherTopics.points)}
+  </section>`;
+}
+
+function readingDirectory(id) {
+  const section = sectionByRoute.get(id);
+  if (!section?.points.length) return '';
+  if (section === otherTopics) {
+    const point = otherTopics.points.find(item => item.id === id || item.points.some(child => child.id === id));
+    if (!point?.points.length) return '';
+    return `<details class="reading-directory"><summary>本考点小节</summary>${pointLinks(point.points, id)}</details>`;
+  }
+  return `<details class="reading-directory"><summary>本节考点</summary>${pointLinks(section.points, id)}</details>`;
 }
 
 function exampleList() {
@@ -141,7 +240,7 @@ function normalize(value) {
 }
 
 function matches(entry, query) {
-  return normalize(`${entry.title} ${entry.text}`).includes(normalize(query));
+  return normalize(`${numberedTopicTitle(entry.id, entry.title)} ${entry.text}`).includes(normalize(query));
 }
 
 function renderExampleResults() {
@@ -152,9 +251,12 @@ function renderExampleResults() {
   for (const filter of main.querySelectorAll('[data-filter]')) filter.setAttribute('aria-pressed', filter.dataset.filter === exampleFilter);
 }
 
-function article(entry) {
+function article(entry, id) {
   const isExample = examples.includes(entry);
-  const back = `<p class="breadcrumb"><a href="#${isExample ? 'examples' : 'topics'}">← ${isExample ? '例题库' : '考点笔记'}</a></p>`;
+  const section = sectionByRoute.get(id);
+  const chapter = section === otherTopics ? otherTopics : groups.find(group => group.id === section?.chapterId);
+  const back = isExample ? '<p class="breadcrumb"><a href="#examples">例题库</a></p>' :
+    `<p class="breadcrumb"><a href="#topics">复习目录</a>${chapter ? `<span aria-hidden="true"> / </span><a href="#${chapter.id}">${safe(chapter.title)}</a>` : ''}</p>`;
   const related = [];
   if (!isExample) {
     for (const candidate of examples) if (candidate.text.includes(`](#${entry.id})`)) related.push(candidate);
@@ -162,7 +264,7 @@ function article(entry) {
   const relatedHtml = related.length ? `<section class="section"><div class="section-heading"><h2>配套例题</h2></div><div class="row-list">${related.map(candidate => row(candidate, '例题')).join('')}</div></section>` : '';
   const previous = examples[examples.indexOf(entry) - 1];
   const next = examples[examples.indexOf(entry) + 1];
-  return heading(entry.title, '', back) + `<article class="article">${entry.html}${entry.solution ? `<details><summary>展开思路与解析</summary>${entry.solution}</details>` : ''}</article>` + (isExample ? `<div class="actions article-actions example-actions"><div class="actions"><button type="button" class="button" data-toggle="saved" aria-pressed="${state.saved.includes(entry.id)}">${state.saved.includes(entry.id) ? '已加入待复习' : '加入待复习'}</button><button type="button" class="button" data-toggle="done" aria-pressed="${state.done.includes(entry.id)}">${state.done.includes(entry.id) ? '已完成' : '标记完成'}</button></div><div class="actions">${previous ? button(previous.id, '上一题') : ''}${next ? button(next.id, '下一题') : ''}</div></div>` : relatedHtml);
+  return heading(numberedTopicTitle(entry.id, entry.title), '', back) + readingDirectory(id) + `<article class="article">${entry.html}${entry.solution ? `<details><summary>展开思路与解析</summary>${entry.solution}</details>` : ''}</article>` + (isExample ? `<div class="actions article-actions example-actions"><div class="actions"><button type="button" class="button" data-toggle="saved" aria-pressed="${state.saved.includes(entry.id)}">${state.saved.includes(entry.id) ? '已加入待复习' : '加入待复习'}</button><button type="button" class="button" data-toggle="done" aria-pressed="${state.done.includes(entry.id)}">${state.done.includes(entry.id) ? '已完成' : '标记完成'}</button></div><div class="actions">${previous ? button(previous.id, '上一题') : ''}${next ? button(next.id, '下一题') : ''}</div></div>` : relatedHtml);
 }
 
 function quizView(id) {
@@ -175,7 +277,7 @@ function quizView(id) {
 
   if (id === 'quiz-history') {
     const history = reviewQuiz.history;
-    if (!history.length) return heading('历次成绩') + `<section class="article">${onlineNote}<p>交卷后，这里会显示分数和答错的考点。</p>${button('quiz', '返回随堂自测', 'primary')}</section>`;
+    if (!history.length) return heading('历次成绩') + `<section class="article">${onlineNote}<p>交卷后，这里会显示分数和答错的考点。</p>${button('quiz-small', '返回随堂小测', 'primary')}</section>`;
     const concepts = new Map();
     for (const record of history) {
       for (const item of record.missed) {
@@ -192,7 +294,7 @@ function quizView(id) {
       <section class="section"><h2>累计错题考点</h2>${missed.length ? `<div class="row-list">${missed.map(item => row({
         id: item.topic, title: item.title,
       }, `错 ${item.count} 次`)).join('')}</div>` : '<p class="muted">目前没有答错的考点。</p>'}</section>
-      <div class="actions article-actions">${button('quiz', '返回随堂自测')}</div>`;
+      <div class="actions article-actions">${button('quiz-small', '返回随堂小测')}</div>`;
   }
 
   if (id.startsWith('quiz-result/') || round?.complete) {
@@ -201,12 +303,12 @@ function quizView(id) {
     return heading('自测结果', `${score(record)} 分 · 答对 ${record.correct} / ${record.total} 题 · ${date(record.time)}`) +
       `<section class="article">${onlineNote}${record.missed.length ? `<h2>本轮答错的考点</h2>${record.missed.map(item =>
         `<details class="quiz-mistake"><summary>第 ${item.number} 题 · ${safe(item.title)}</summary><p>${safe(item.prompt)}</p><p>你的答案：${safe(item.chosen)}<br>正确答案：${safe(item.correct)}</p><p>${safe(item.feedback)}</p><a href="#${item.topic}">回看考点笔记</a></details>`).join('')}` : '<p>本轮全部答对。</p>'}
-        <div class="actions article-actions">${id === 'quiz' ? start('再抽 10 题') : button('quiz', '返回随堂自测', 'primary')}${historyLink}</div>
+        <div class="actions article-actions">${id === 'quiz-small' ? start('再抽 10 题') : button('quiz-small', '返回随堂小测', 'primary')}${historyLink}</div>
       </section>`;
   }
 
   if (!round) {
-    return heading('随堂自测', `题库有 ${reviewQuiz.count} 道题，每轮抽 ${reviewQuiz.size} 道。单题 10 分，交卷后可回看错题。`) +
+    return heading('随堂小测', `题库有 ${reviewQuiz.count} 道题，每轮抽 ${reviewQuiz.size} 道。单题 10 分，交卷后可回看错题。`) +
       `<section class="article">${onlineNote}<p>本轮分数和做错的考点会记录在当前浏览器。</p><div class="actions">${start('开始抽题')}${historyLink}</div></section>`;
   }
 
@@ -217,7 +319,7 @@ function quizView(id) {
   const correct = entry.order[entry.choice] === item.answer;
   const last = round.index === round.items.length - 1;
   const answerLetter = 'ABCD'[entry.order.indexOf(item.answer)];
-  return heading('随堂自测', `第 ${round.index + 1} / ${round.items.length} 题 · ${item.title}`) +
+  return heading('随堂小测', `第 ${round.index + 1} / ${round.items.length} 题 · ${item.title}`) +
     `<article class="article">${onlineNote}<p class="muted">已答 ${answeredCount} / ${round.items.length}</p><h2>${safe(item.prompt)}</h2>
     <div class="quiz-options">${entry.order.map((index, position) => {
       const style = answered && index === item.answer ? 'correct' : answered && position === entry.choice ? 'wrong' : '';
@@ -235,27 +337,42 @@ function currentRoute() {
 function route(resetScroll = true) {
   const hash = currentRoute();
   const id = hash === 'worked-examples' ? 'examples' : hash || 'home';
-  const entry = byId.get(id);
+  const topicRoute = id.match(/^([\w-]+)\/(point-\d+)$/);
+  const entry = byId.get(topicRoute?.[1] ?? id);
   const group = groups.find(item => item.id === id);
-  const isQuiz = id === 'quiz' || id === 'quiz-history' || id.startsWith('quiz-result/');
+  const isQuiz = id === 'quiz' || id === 'quiz-small' || id === 'quiz-history' || id.startsWith('quiz-result/');
+  const isMajor = id === 'quiz-major';
   const isPaper = id === 'papers' || id.startsWith('paper/');
-  const tab = isQuiz ? 'quiz' : isPaper || id === 'examples' || examples.includes(entry) || indexes.includes(id) ? 'examples' : id === 'topics' || entry ? 'topics' : 'home';
+  const tab = isQuiz || isMajor ? 'quiz' : isPaper || id === 'examples' || examples.includes(entry) || indexes.includes(id) ? 'examples' : id === 'topics' || id === otherTopics.id || entry ? 'topics' : 'home';
   for (const link of document.querySelectorAll('[data-tab]')) {
     if (link.dataset.tab === tab) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   }
+  const sectionId = sectionByRoute.get(id)?.id;
   for (const link of document.querySelectorAll('.sidebar a')) {
-    if (link.hash === `#${id}`) link.setAttribute('aria-current', 'page');
-    else link.removeAttribute('aria-current');
+    if (link.hash === `#${id}` || (sectionId && link.hash === `#${sectionId}`)) {
+      link.setAttribute('aria-current', link.hash === `#${id}` ? 'page' : 'location');
+      const section = link.closest('details');
+      if (section) section.open = true;
+    } else link.removeAttribute('aria-current');
   }
-  if (isQuiz) main.innerHTML = quizView(id);
+  for (const chapter of document.querySelectorAll('#chapter-nav details')) {
+    if (chapter.dataset.chapter === id || chapter.dataset.chapter === sectionByRoute.get(id)?.chapterId || (id === 'topics' && !document.querySelector('#chapter-nav details[open]'))) chapter.open = true;
+  }
+  if (id === 'quiz') main.innerHTML = heading('随堂测验') + `<div class="example-sources">
+    <a class="card" href="#quiz-small"><h2>随堂小测</h2><p>从原有题库抽 10 题，作答后立即看解析。</p></a>
+    <a class="card" href="#quiz-major"><h2>随堂大测</h2><p>按考点从历年真题抽 10 道选择、10 道填空。</p></a>
+  </div>`;
+  else if (isQuiz) main.innerHTML = quizView(id);
+  else if (isMajor) main.innerHTML = majorQuiz.view();
   else if (isPaper) { main.innerHTML = examPapers.view(id); examPapers.renderList(); }
   else if (id === 'examples') { main.innerHTML = exampleList(); renderExampleResults(); }
   else if (id === 'topics' || group) main.innerHTML = topicList(group);
+  else if (id === otherTopics.id) main.innerHTML = heading(otherTopics.title, '', '<p class="breadcrumb"><a href="#topics">复习目录</a></p>') + otherTopicPanel(false);
   else if (entry) {
-    state.recent = [id, ...state.recent.filter(key => key !== id)].slice(0, 6);
+    state.recent = [entry.id, ...state.recent.filter(key => key !== entry.id)].slice(0, 6);
     persist();
-    main.innerHTML = article(entry);
+    main.innerHTML = article(entry, id);
   }
   else { main.innerHTML = home(); drawHero(); }
   for (const table of main.querySelectorAll('table')) {
@@ -263,15 +380,21 @@ function route(resetScroll = true) {
     wrap.className = 'table-wrap';
     table.before(wrap); wrap.append(table);
   }
-  document.title = entry ? `${entry.title} · 数分复习簿` : '数分复习簿';
-  if (resetScroll) window.scrollTo(0, 0);
+  document.title = entry ? `${numberedTopicTitle(entry.id, entry.title)} · 数分复习簿` : id === otherTopics.id ? '其它考点 · 数分复习簿' : '数分复习簿';
+  if (resetScroll) {
+    window.scrollTo(0, 0);
+    if (topicRoute && sectionByRoute.has(id)) document.getElementById(topicRoute[2])?.scrollIntoView();
+  }
 }
 
 function updateSearch() {
   const query = search.value.trim();
   const entries = query ? notes.filter(entry => entry.id !== 'study-navigation' && matches(entry, query)) : ['continuity', 'common-maclaurin', 'example-08'].map(id => byId.get(id)).filter(Boolean);
-  if (query) entries.sort((a, b) => Number(normalize(b.title).includes(normalize(query))) - Number(normalize(a.title).includes(normalize(query))));
-  searchResults.innerHTML = entries.slice(0, 12).map(entry => row(entry, examples.includes(entry) ? '例题' : '笔记')).join('') || '<p class="muted">没有匹配内容。可以换个关键词或输入题号。</p>';
+  if (query && normalize(otherTopics.title).includes(normalize(query.replace('其他', '其它')))) {
+    entries.unshift({ ...otherTopics, text: '' });
+  }
+  if (query) entries.sort((a, b) => Number(normalize(numberedTopicTitle(b.id, b.title)).includes(normalize(query))) - Number(normalize(numberedTopicTitle(a.id, a.title)).includes(normalize(query))));
+  searchResults.innerHTML = entries.slice(0, 12).map(entry => row(entry, entry.id === otherTopics.id ? '目录' : examples.includes(entry) ? '例题' : '笔记')).join('') || '<p class="muted">没有匹配内容。可以换个关键词或输入题号。</p>';
 }
 
 function openSearch() {
@@ -280,7 +403,13 @@ function openSearch() {
   search.focus();
 }
 
-document.querySelector('#chapter-nav').innerHTML = groups.map(group => `<a class="side-group" href="#${group.id}">${group.title}</a>${group.topics.map(id => byId.get(id)).filter(Boolean).map(entry => `<a class="side-topic" href="#${entry.id}">${safe(entry.title)}</a>`).join('')}`).join('');
+document.querySelector('#chapter-nav').innerHTML = groups.map(chapter => `<details class="side-chapter" name="review-directory" data-chapter="${chapter.id}">
+  <summary>${safe(chapter.title)}</summary>
+  <div class="side-chapter-body">${chapter.sections.map(sectionLink).join('')}</div>
+</details>`).join('') + `<details class="side-chapter" name="review-directory" data-chapter="${otherTopics.id}">
+  <summary>其它考点</summary>
+  <div class="side-chapter-body"><a href="#${otherTopics.id}">查看全部</a>${pointLinks(otherTopics.points)}</div>
+</details>`;
 document.querySelector('#index-nav').innerHTML = '<a href="#papers">历年真题</a>' + indexes.map(id => byId.get(id)).filter(Boolean).map(entry => `<a href="#${entry.id}">${safe(entry.title)}</a>`).join('');
 document.querySelector('#skip-main').addEventListener('click', event => {
   event.preventDefault(); main.focus();
@@ -330,8 +459,9 @@ main.addEventListener('click', event => {
     main.focus();
   }
 });
-window.addEventListener('hashchange', () => { route(); main.focus(); });
+window.addEventListener('hashchange', () => { route(); main.focus({ preventScroll: true }); });
 window.addEventListener('resize', drawHero);
 syncThemeIcon();
 examPapers.bind(main);
+majorQuiz.bind(main);
 route();
