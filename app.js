@@ -7,18 +7,6 @@ const groups = [
 ];
 const indexes = ['example-topics', 'midterm-deck', 'chapter-2-problems', 'chapter-2-homework'];
 const examples = notes.filter(entry => /^example-\d/.test(entry.id));
-const quiz = [
-  { topic: 'continuity', title: '判断间断点', prompt: '如果某函数在 0 处的左、右极限都等于 1，但 f(0)=0，那么 0 属于哪一类？', options: ['连续点', '可去间断点', '跳跃间断点', '第二类间断点'], answer: 1, feedback: '左右都靠到同一个高度 1。把点值改成 1，图像就接上了。' },
-  { topic: 'basic-limits', title: '比较无穷小', prompt: '当 u 趋于 0 时，哪一项与 1-cos u 等价？', options: ['u', 'u²', '-u²/2', 'u²/2'], answer: 3, feedback: '看同一量级还要看系数。1-cos u = 2sin²(u/2)，用 sin(u/2) 与 u/2 等价，系数就是 1/2。' },
-  { topic: 'derivative-definition', title: '识别单侧差商', prompt: '导数定义里的增量若换成 h²，令 h 从两侧趋于 0，实际是在考察哪边的导数？', options: ['左导数', '右导数', '两侧导数', '对称差商'], answer: 1, feedback: 'h² 在 h≠0 时始终为正，所以 x₀+h² 始终在 x₀ 的右边。' },
-  { topic: 'curves', title: '参数曲线的二阶导数', prompt: '设参数曲线的斜率 P(t)=dy/dx，且 x\'(t)≠0。二阶导数怎么求？', options: ['P\'(t)', 'P\'(t) / x\'(t)', 'P(t) / x\'(t)', 'P\'(t) / y\'(t)'], answer: 1, feedback: 'P\'(t) 是斜率随 t 的变化率。除以 x\'(t)，就换算成斜率随 x 的变化率。' },
-  { topic: 'higher-derivatives', title: '从展开式读出导数', prompt: '若 f 的麦克劳林展开里 x⁵ 的系数是 3，那么 f 的五阶导数在 0 处是多少？', options: ['3', '15', '3/120', '360'], answer: 3, feedback: '麦克劳林展开里这一项的系数是五阶导数值除以 5!，所以反过来要乘 5!，得到 3×120=360。' },
-  { topic: 'rolle-basics', title: '使用罗尔定理', prompt: '函数在 [a,b] 上连续、在 (a,b) 内可导。加上哪个条件，就能用罗尔定理找到导数为 0 的点？', options: ['f(a)=f(b)', 'f(a)>f(b)', 'f(a)<f(b)', 'f(a) 与 f(b) 同号'], answer: 0, feedback: '两端同高是罗尔定理的条件，导数为零的点位于开区间 (a,b) 内。' },
-  { topic: 'derivative-definition', title: '分段点的二阶导数', prompt: '分段函数在 0 处已经有一阶导数。接下来用定义判断二阶导数时，该看哪个差商？', options: ['[f(x)-f(0)] / x²', '[f\'(x)-f\'(0)] / x', '[f(x)-f(0)] / x', 'f\'(x) / x'], answer: 1, feedback: '二阶导数是 f\' 的导数。把导数定义里的 f 全部换成 f\'，点值也跟着换成 f\'(0)。' },
-  { topic: 'power-limits', title: '幂式极限的最后一步', prompt: '某个正值幂式 y 取对数后，算出 ln y 趋于 0。原式 y 的极限是多少？', options: ['0', '1', 'e', '不能判断'], answer: 1, feedback: '对数只算到中间一步。用 y=e^(ln y) 还原，得到 e⁰=1。' },
-  { topic: 'concavity', title: '判断拐点', prompt: '若某点两侧二阶导数都为正，且该点二阶导数等于 0，能从这些信息判断该点是拐点吗？', options: ['能，因为二阶导数为零', '不能，两侧凹凸性相同', '能，因为两侧都有二阶导数', '必须先求一阶导数的零点'], answer: 1, feedback: '拐点要看凹凸性有没有改变。两边的二阶导数都为正，曲线在两侧都向同一个方向弯。' },
-  { topic: 'limit-constraints', title: '求斜渐近线', prompt: '已经算出 f(x)/x 趋于 2。要找斜渐近线的截距，下一步应算什么？', options: ['f(x) 的极限', 'f(x)-2x 的极限', 'f(x)-2 的极限', 'x[f(x)-2x] 的极限'], answer: 1, feedback: '斜率已经是 2。减掉 2x 后，剩下的极限如果是有限数 b，渐近线就是 y=2x+b。' },
-];
 
 const main = document.querySelector('main');
 const dialog = document.querySelector('#search-dialog');
@@ -30,9 +18,6 @@ const themeKey = 'calculus-review-theme';
 let state = { done: [], saved: [], recent: [], answers: {} };
 try { state = { ...state, ...JSON.parse(localStorage.getItem(storageKey) || '{}') }; } catch {}
 let exampleFilter = 'all';
-let quizIndex = 0;
-let attempt = {};
-let quizComplete = false;
 
 function persist() {
   try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch {}
@@ -210,19 +195,66 @@ function article(entry) {
   return heading(entry.title, '', back) + `<article class="article">${entry.html}${entry.solution ? `<details><summary>展开思路与解析</summary>${entry.solution}</details>` : ''}</article>` + (isExample ? `<div class="actions article-actions"><div class="actions"><button type="button" class="button" data-toggle="saved" aria-pressed="${state.saved.includes(entry.id)}">${state.saved.includes(entry.id) ? '已加入待复习' : '加入待复习'}</button><button type="button" class="button" data-toggle="done" aria-pressed="${state.done.includes(entry.id)}">${state.done.includes(entry.id) ? '已完成' : '标记完成'}</button></div><div class="actions">${previous ? button(previous.id, '上一题') : ''}${next ? button(next.id, '下一题') : ''}</div></div>` : relatedHtml);
 }
 
-function quizView() {
-  if (quizComplete) {
-    const correct = quiz.filter((item, i) => item.answer === attempt[i]).length;
-    const missed = quiz.filter((item, i) => item.answer !== attempt[i]);
-    return heading('自测结果', `本轮答对 ${correct} / ${quiz.length} 题。`) + `<section class="article">${missed.length ? `<h2>回看答错的考点</h2><div class="row-list">${missed.map(item => byId.get(item.topic) ? row(byId.get(item.topic), item.title) : '').join('')}</div>` : '<p>本轮全部答对。</p>'}<div class="actions article-actions"><button type="button" data-quiz="restart" class="button primary">再做一轮</button>${button('topics', '去看笔记')}</div></section>`;
+function quizView(id) {
+  const round = reviewQuiz.round;
+  const historyLink = button('quiz-history', '历次成绩');
+  const onlineNote = reviewQuiz.storageAvailable ? '' : '<p class="feedback" role="status">浏览器暂时无法保存记录。本次结果关闭页面后可能丢失。</p>';
+  const date = value => new Date(value).toLocaleString('zh-CN', { dateStyle: 'medium', timeStyle: 'short' });
+  const score = record => Math.round(record.correct / record.total * 100);
+  const start = label => `<button type="button" class="button primary" data-quiz="start">${label}</button>`;
+
+  if (id === 'quiz-history') {
+    const history = reviewQuiz.history;
+    if (!history.length) return heading('历次成绩') + `<section class="article">${onlineNote}<p>交卷后，这里会显示分数和答错的考点。</p>${button('quiz', '返回随堂自测', 'primary')}</section>`;
+    const concepts = new Map();
+    for (const record of history) {
+      for (const item of record.missed) {
+        const key = item.topic + ':' + item.title;
+        const previous = concepts.get(key);
+        concepts.set(key, { ...item, count: (previous?.count ?? 0) + 1 });
+      }
+    }
+    const missed = [...concepts.values()].sort((a, b) => b.count - a.count || a.title.localeCompare(b.title, 'zh-CN'));
+    return heading('历次成绩', `共完成 ${history.length} 轮，最高 ${history.reduce((best, record) => Math.max(best, score(record)), 0)} 分。`) + onlineNote + `
+      <section class="row-list" aria-label="测验成绩">${history.map(record => row({
+        id: 'quiz-result/' + record.id, title: date(record.time),
+      }, `${score(record)} 分 · 答对 ${record.correct}/${record.total}`)).join('')}</section>
+      <section class="section"><h2>累计错题考点</h2>${missed.length ? `<div class="row-list">${missed.map(item => row({
+        id: item.topic, title: item.title,
+      }, `错 ${item.count} 次`)).join('')}</div>` : '<p class="muted">目前没有答错的考点。</p>'}</section>
+      <div class="actions article-actions">${button('quiz', '返回随堂自测')}</div>`;
   }
-  const item = quiz[quizIndex];
-  const answer = attempt[quizIndex];
-  const answered = answer !== undefined;
-  return heading('随堂自测', `第 ${quizIndex + 1} / ${quiz.length} 题 · ${item.title}`) + `<article class="article"><h2>${item.prompt}</h2><div class="quiz-options">${item.options.map((option, i) => {
-    const style = answered && i === item.answer ? 'correct' : answered && i === answer ? 'wrong' : '';
-    return `<button type="button" data-option="${i}" class="button option ${style}" ${answered ? 'disabled' : ''}><b>${'ABCD'[i]}</b><span>${option}</span></button>`;
-  }).join('')}</div><div class="feedback" aria-live="polite">${answered ? `<strong>${answer === item.answer ? '答对了。' : `正确答案是 ${'ABCD'[item.answer]}。`}</strong> ${item.feedback} <a href="#${item.topic}">回看考点</a>` : ''}</div><div class="actions">${quizIndex > 0 ? '<button type="button" class="button" data-quiz="previous">上一题</button>' : ''}<button type="button" class="button primary" data-quiz="next" ${answered ? '' : 'disabled'}>${quizIndex === quiz.length - 1 ? '查看结果' : '下一题'}</button></div></article>`;
+
+  if (id.startsWith('quiz-result/') || round?.complete) {
+    const record = reviewQuiz.record(id.startsWith('quiz-result/') ? id.slice('quiz-result/'.length) : round.id);
+    if (!record) return heading('自测结果') + `<section class="article"><p>在当前浏览器里找不到这轮记录。</p>${historyLink}</section>`;
+    return heading('自测结果', `${score(record)} 分 · 答对 ${record.correct} / ${record.total} 题 · ${date(record.time)}`) +
+      `<section class="article">${onlineNote}${record.missed.length ? `<h2>本轮答错的考点</h2>${record.missed.map(item =>
+        `<details class="quiz-mistake"><summary>第 ${item.number} 题 · ${safe(item.title)}</summary><p>${safe(item.prompt)}</p><p>你的答案：${safe(item.chosen)}<br>正确答案：${safe(item.correct)}</p><p>${safe(item.feedback)}</p><a href="#${item.topic}">回看考点笔记</a></details>`).join('')}` : '<p>本轮全部答对。</p>'}
+        <div class="actions article-actions">${id === 'quiz' ? start('再抽 10 题') : button('quiz', '返回随堂自测', 'primary')}${historyLink}</div>
+      </section>`;
+  }
+
+  if (!round) {
+    return heading('随堂自测', `题库有 ${reviewQuiz.count} 道题，每轮抽 ${reviewQuiz.size} 道。单题 10 分，交卷后可回看错题。`) +
+      `<section class="article">${onlineNote}<p>本轮分数和做错的考点会记录在当前浏览器。</p><div class="actions">${start('开始抽题')}${historyLink}</div></section>`;
+  }
+
+  const entry = round.items[round.index];
+  const item = reviewQuiz.question(entry.questionId);
+  const answered = entry.choice !== null;
+  const answeredCount = round.items.filter(question => question.choice !== null).length;
+  const correct = entry.order[entry.choice] === item.answer;
+  const last = round.index === round.items.length - 1;
+  const answerLetter = 'ABCD'[entry.order.indexOf(item.answer)];
+  return heading('随堂自测', `第 ${round.index + 1} / ${round.items.length} 题 · ${item.title}`) +
+    `<article class="article">${onlineNote}<p class="muted">已答 ${answeredCount} / ${round.items.length}</p><h2>${safe(item.prompt)}</h2>
+    <div class="quiz-options">${entry.order.map((index, position) => {
+      const style = answered && index === item.answer ? 'correct' : answered && position === entry.choice ? 'wrong' : '';
+      return `<button type="button" data-option="${position}" class="button option ${style}" ${answered ? 'disabled' : ''}><b>${'ABCD'[position]}</b><span>${safe(item.options[index])}</span></button>`;
+    }).join('')}</div><div class="feedback" aria-live="polite">${answered ? `<strong>${correct ? '答对了。' : '正确答案是 ' + answerLetter + '。'}</strong> ${safe(item.feedback)} <a href="#${item.topic}">回看考点</a>` : ''}</div>
+    <div class="actions">${round.index > 0 ? '<button type="button" class="button" data-quiz="previous">上一题</button>' : ''}
+      <button type="button" class="button primary" data-quiz="${last ? 'submit' : 'next'}" ${answered ? '' : 'disabled'}>${last ? '交卷并查看结果' : '下一题'}</button>${historyLink}</div></article>`;
 }
 
 function route(resetScroll = true) {
@@ -230,7 +262,8 @@ function route(resetScroll = true) {
   const id = hash === 'worked-examples' ? 'examples' : hash || 'home';
   const entry = byId.get(id);
   const group = groups.find(item => item.id === id);
-  const tab = id === 'quiz' ? 'quiz' : id === 'examples' || examples.includes(entry) || indexes.includes(id) ? 'examples' : id === 'topics' || entry ? 'topics' : 'home';
+  const isQuiz = id === 'quiz' || id === 'quiz-history' || id.startsWith('quiz-result/');
+  const tab = isQuiz ? 'quiz' : id === 'examples' || examples.includes(entry) || indexes.includes(id) ? 'examples' : id === 'topics' || entry ? 'topics' : 'home';
   for (const link of document.querySelectorAll('[data-tab]')) {
     if (link.dataset.tab === tab) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
@@ -239,7 +272,7 @@ function route(resetScroll = true) {
     if (link.hash === `#${id}`) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   }
-  if (id === 'quiz') main.innerHTML = quizView();
+  if (isQuiz) main.innerHTML = quizView(id);
   else if (id === 'examples') { main.innerHTML = exampleList(); renderExampleResults(); }
   else if (id === 'topics' || group) main.innerHTML = topicList(group);
   else if (entry) {
@@ -306,24 +339,21 @@ main.addEventListener('click', event => {
     target.textContent = toggle === 'done' ? present ? '标记完成' : '已完成' : present ? '加入待复习' : '已加入待复习';
     persist();
   }
-  if (option !== undefined && attempt[quizIndex] === undefined) {
-    attempt[quizIndex] = Number(option);
-    state.answers = attempt; persist(); route(false);
-    main.querySelector('[data-quiz="next"]').focus();
+  if (option !== undefined) {
+    reviewQuiz.answer(Number(option));
+    route(false);
+    main.querySelector('[data-quiz="next"], [data-quiz="submit"]')?.focus();
   }
   if (action) {
-    if (action === 'previous') quizIndex--;
-    if (action === 'next') {
-      if (quizIndex === quiz.length - 1) quizComplete = true;
-      else quizIndex++;
-    }
-    if (action === 'restart') { quizIndex = 0; attempt = {}; state.answers = {}; quizComplete = false; persist(); }
-    route(); main.focus();
+    if (action === "start") reviewQuiz.start();
+    if (action === "previous") reviewQuiz.move(-1);
+    if (action === "next") reviewQuiz.move(1);
+    if (action === "submit") reviewQuiz.submit();
+    route();
+    main.focus();
   }
 });
 window.addEventListener('hashchange', () => { route(); main.focus(); });
 window.addEventListener('resize', drawHero);
 syncThemeIcon();
-attempt = state.answers;
-quizIndex = Math.min(Object.keys(attempt).length, quiz.length - 1);
 route();
