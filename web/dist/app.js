@@ -212,7 +212,7 @@ function readingDirectory(id) {
     if (!point?.points.length) return '';
     return `<details class="reading-directory"><summary>本考点小节</summary>${pointLinks(point.points, id)}</details>`;
   }
-  return `<details class="reading-directory"><summary>本节考点</summary>${pointLinks(section.points, id)}</details>`;
+  return `<details class="reading-directory"${section.id === id ? ' open' : ''}><summary>本节考点</summary>${pointLinks(section.points, id)}</details>`;
 }
 
 function exampleList() {
@@ -251,7 +251,12 @@ function article(entry, id) {
   const relatedHtml = related.length ? `<section class="section"><div class="section-heading"><h2>配套例题</h2></div><div class="row-list">${related.map(candidate => row(candidate, '例题')).join('')}</div></section>` : '';
   const previous = examples[examples.indexOf(entry) - 1];
   const next = examples[examples.indexOf(entry) + 1];
-  return heading(numberedTopicTitle(entry.id, entry.title), '', back) + readingDirectory(id) + `<article class="article">${entry.html}${entry.solution ? `<details><summary>展开思路与解析</summary>${entry.solution}</details>` : ''}</article>` + (isExample ? `<div class="actions article-actions example-actions"><div class="actions"><button type="button" class="button" data-toggle="saved" aria-pressed="${state.saved.includes(entry.id)}">${state.saved.includes(entry.id) ? '已加入待复习' : '加入待复习'}</button><button type="button" class="button" data-toggle="done" aria-pressed="${state.done.includes(entry.id)}">${state.done.includes(entry.id) ? '已完成' : '标记完成'}</button></div><div class="actions">${previous ? button(previous.id, '上一题') : ''}${next ? button(next.id, '下一题') : ''}</div></div>` : relatedHtml);
+  const sectionNotes = section?.id === id ? section.points.map(point => {
+    const child = byId.get(point.id);
+    return child?.html.trim() ? `<section class="reading-point"><h4>${safe(topicLabel(child.title))}</h4>${child.html}</section>` : '';
+  }).join('') : '';
+  const content = entry.html + sectionNotes + (entry.solution ? `<details><summary>展开思路与解析</summary>${entry.solution}</details>` : '');
+  return heading(numberedTopicTitle(entry.id, entry.title), '', back) + readingDirectory(id) + (content.trim() ? `<article class="article">${content}</article>` : '') + (isExample ? `<div class="actions article-actions example-actions"><div class="actions"><button type="button" class="button" data-toggle="saved" aria-pressed="${state.saved.includes(entry.id)}">${state.saved.includes(entry.id) ? '已加入待复习' : '加入待复习'}</button><button type="button" class="button" data-toggle="done" aria-pressed="${state.done.includes(entry.id)}">${state.done.includes(entry.id) ? '已完成' : '标记完成'}</button></div><div class="actions">${previous ? button(previous.id, '上一题') : ''}${next ? button(next.id, '下一题') : ''}</div></div>` : relatedHtml);
 }
 
 function quizView(id) {

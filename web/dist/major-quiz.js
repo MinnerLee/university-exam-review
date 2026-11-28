@@ -109,12 +109,28 @@ const majorQuiz = (() => {
   const control = (label, action, modifier = '', attrs = '') =>
     `<button type="button" class="button ${modifier}" data-major-action="${action}" ${attrs}>${label}</button>`;
 
+  function questionPreview(item) {
+    if (!item.preview) return '';
+    const [path, width, height] = item.preview;
+    return `<div class="major-preview">
+      <div class="major-preview-image" tabindex="0" aria-label="原题图片">
+        <img src="${safe(path)}" width="${width}" height="${height}" alt="${safe(`卷 ${item.paperId} · ${item.label}原题`)}">
+      </div>
+      <button type="button" class="button" data-major-zoom aria-pressed="false">放大题面</button>
+      <p data-major-preview-error class="muted" hidden>题面加载失败，可以打开在线原卷查看。</p>
+    </div>`;
+  }
+
+  function originalPage(page, label) {
+    return `<a class="button" href="https://pub.fa-555.com/bump-1.5.0#page=${page}" target="_blank" rel="noopener">${label}</a>`;
+  }
+
   function setup() {
     const { choice, fill } = eligible();
     const ready = choice.length >= perType && fill.length >= perType;
     return `<section class="article">
       <h2>划定知识点范围</h2>
-      <p>在选定范围内随机抽 10 道选择题和 10 道填空题。题面来自例题库的历年真题。</p>
+      <p>在选定范围内随机抽 10 道选择题和 10 道填空题。题面截取自 fa_555 等编的《大邮数学集》v1.5.0。</p>
       <div class="actions">${control('全选', 'all')}${control('清空', 'none')}</div>
       <div class="major-scope">${areas.map(([label, topics]) => `<fieldset><legend>${label}</legend>
         <label><input type="checkbox" data-major-group="${safe(label)}" ${topics.every(([id]) => selected.has(id)) ? 'checked' : ''}> 选中本组</label>
@@ -144,7 +160,6 @@ const majorQuiz = (() => {
   function view() {
     const title = heading('随堂大测', '10 道选择题 + 10 道填空题。交卷后对照原卷答案核对，每题 5 分。', '<p class="breadcrumb"><a href="#quiz">随堂测验</a></p>');
     const toolbar = `<div class="actions major-toolbar">
-      <button class="button" type="button" data-paper-open>${examPapers.fileName ? '更换本地 PDF' : '选取本地 PDF'}</button>
       <a class="button" href="${examPapers.original}" target="_blank" rel="noopener">下载官方 PDF</a>
       ${control(showHistory ? '返回大测' : '大测记录', 'history')}
     </div>`;
@@ -172,9 +187,10 @@ const majorQuiz = (() => {
       <p class="muted">${answering ? '已作答' : '已核对'} ${progress} / ${round.items.length} · ${isChoice ? '选择题' : '填空题'}</p>
       <h2>第 ${round.index + 1} 题 · ${safe(topicNames.get(item.topic))}</h2>
       <p>${safe(item.paperTitle)} · 卷 ${item.paperId} · ${item.label} · PDF 第 ${item.page} 页</p>
-      <div class="actions">${examPapers.sourceLink(item.page, '查看原题', 'primary')}
-        ${answering ? '' : examPapers.sourceLink(item.answerPage, '查看原卷答案')}</div>
-      ${answering ? isChoice ? `<div class="actions major-answer" aria-label="填写选择题答案">${['A','B','C','D','E'].map(letter =>
+      ${questionPreview(item)}
+      <div class="actions">${originalPage(item.page, '打开在线原卷')}
+        ${answering ? '' : originalPage(item.answerPage, '打开原卷答案')}</div>
+      ${answering ? isChoice ? `<div class="actions major-answer" aria-label="填写选择题答案">${(item.options ?? ['A','B','C','D','E']).map(letter =>
         control(letter, 'answer', '', `data-value="${letter}" aria-pressed="${supplied === letter}"`)).join('')}</div>` :
         `<label class="major-answer">填写答案 <input id="major-fill" type="text" autocomplete="off" placeholder="有多个空时，按顺序填写" value="${safe(supplied)}"></label>` :
         `<div class="major-answer"><p>你的答案：${safe(supplied)}</p>${checking ? `<div class="actions" aria-label="核对本题">
@@ -189,7 +205,21 @@ const majorQuiz = (() => {
   }
 
   function bind(main) {
+    main.addEventListener('error', event => {
+      const preview = event.target.closest('.major-preview');
+      if (!preview || event.target.tagName !== 'IMG') return;
+      preview.querySelector('.major-preview-image').hidden = true;
+      preview.querySelector('[data-major-zoom]').hidden = true;
+      preview.querySelector('[data-major-preview-error]').hidden = false;
+    }, true);
     main.addEventListener('click', event => {
+      const zoom = event.target.closest('[data-major-zoom]');
+      if (zoom) {
+        const enlarged = zoom.closest('.major-preview').classList.toggle('is-enlarged');
+        zoom.setAttribute('aria-pressed', String(enlarged));
+        zoom.textContent = enlarged ? '适应宽度' : '放大题面';
+        return;
+      }
       const button = event.target.closest('[data-major-action]');
       if (!button) return;
       const name = button.dataset.majorAction;
@@ -198,6 +228,7 @@ const majorQuiz = (() => {
         save();
       } else action(name, button);
       route(['start','submit','finish','history','new'].includes(name) && !message);
+      if (['jump', 'previous', 'next'].includes(name)) main.querySelector('.major-question')?.scrollIntoView({ block: 'start' });
       const selectedAnswer = ['answer','check'].includes(name) ? main.querySelector(`[data-major-action="${name}"][aria-pressed=true]`) : null;
       (selectedAnswer ?? main).focus({ preventScroll: true });
     });
