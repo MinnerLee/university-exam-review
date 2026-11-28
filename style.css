@@ -1022,6 +1022,19 @@ dialog::backdrop {
 .major-numbering { display: grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); gap: 6px; margin-bottom: 14px; }
 .major-numbering .button { padding: 4px; min-height: 44px; }
 .major-numbering .button[aria-label$="已完成"]:not([aria-current]) { background: var(--panel-active); }
+.major-question { scroll-margin-top: 8rem; }
+.major-preview { min-width: 0; margin: 12px 0; }
+.major-preview-image {
+  overflow: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overscroll-behavior-inline: contain;
+}
+.major-preview-image img { display: block; width: 100%; height: auto; }
+.major-preview.is-enlarged img { width: max(154%, 540px); max-width: none; }
+.major-preview [data-major-zoom] { margin-top: 8px; }
+.major-preview [hidden] { display: none; }
 .major-answer { margin-top: 16px; }
 .major-answer input[type=text] {
   display: block;
