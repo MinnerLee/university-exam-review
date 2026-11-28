@@ -6,6 +6,7 @@ const chapterSummaries = {
   'mean-value-taylor': '罗尔定理、泰勒展开、单调性、极值与拐点',
 };
 const groups = [];
+const otherTopics = { id: 'other-topics', chapterId: 'other-topics', title: '其它考点', points: [] };
 const sectionByRoute = new Map();
 let currentSection;
 let currentPoint;
@@ -14,21 +15,24 @@ for (const entry of notes) {
   if (entry.level === 2 && entry.id !== 'study-navigation') {
     groups.push({ ...entry, title: entry.title.replace(/^[一二三四五六七八九十]+、/, ''), summary: chapterSummaries[entry.id] ?? '', sections: [] });
     currentSection = null;
+    currentPoint = null;
   } else if (entry.level === 3 && groups.length) {
     currentSection = { ...entry, chapterId: groups.at(-1).id, points: [] };
     groups.at(-1).sections.push(currentSection);
     currentPoint = null;
-  } else if (entry.level === 4 && currentSection) {
-    currentPoint = { ...entry, points: [] };
-    currentSection.points.push(currentPoint);
   }
-  if (entry.level < 3 || !currentSection) continue;
-  sectionByRoute.set(entry.id, currentSection);
+  if (!groups.length) continue;
+  const section = currentSection ?? otherTopics;
+  if (entry.level === 4) {
+    currentPoint = { ...entry, points: [] };
+    section.points.push(currentPoint);
+  }
+  if (entry.level >= 3) sectionByRoute.set(entry.id, section);
   for (const point of entry.outline ?? []) {
     const item = { id: entry.id + '/point-' + point.index, title: point.title, points: [] };
     if (point.level === 5 && currentPoint) currentPoint.points.push(item);
-    else { currentSection.points.push(item); currentPoint = item; }
-    sectionByRoute.set(item.id, currentSection);
+    else { section.points.push(item); currentPoint = item; }
+    sectionByRoute.set(item.id, section);
   }
 }
 function topicLabel(title) {
@@ -39,25 +43,7 @@ function topicLabel(title) {
     .replace("$f''-\\lambda^2 f=0$", 'f″ − λ²f = 0')
     .replace(/\$[^$]+\$/g, '公式');
 }
-const otherTopicOrder = [
-  'midterm-sequences', 'lhopital-conditions', 'asymptote-patterns', 'log-radical-derivative',
-  'related-rates', 'rolle-basics', 'mean-value-proofs', 'inequalities-roots',
-  'taylor-composition', 'common-maclaurin', 'geometric-series', 'taylor-proofs',
-];
-const otherTopics = { id: 'other-topics', chapterId: 'other-topics', title: '其它考点', points: [] };
-const otherTopicRanks = new Map(otherTopicOrder.map((id, index) => [id, index + 1]));
-for (const chapter of groups) {
-  for (const section of chapter.sections) {
-    section.points = section.points.filter(point => {
-      if (!otherTopicRanks.has(point.id)) return true;
-      otherTopics.points.push(point);
-      sectionByRoute.set(point.id, otherTopics);
-      for (const child of point.points) sectionByRoute.set(child.id, otherTopics);
-      return false;
-    });
-  }
-}
-otherTopics.points.sort((a, b) => otherTopicRanks.get(a.id) - otherTopicRanks.get(b.id));
+const otherTopicRanks = new Map(otherTopics.points.map((point, index) => [point.id, index + 1]));
 
 function numberedTopicTitle(id, title) {
   const rank = otherTopicRanks.get(id);
@@ -211,6 +197,7 @@ function topicList(group) {
 }
 
 function otherTopicPanel(isOverview) {
+  if (!otherTopics.points.length) return isOverview ? '' : '<p class="muted">当前考点都已归入对应小节。</p>';
   return `<section class="directory-chapter directory-other">
     ${isOverview ? '<header><h2><a href="#other-topics">其它考点</a></h2></header>' : ''}
     ${pointLinks(otherTopics.points)}
@@ -390,7 +377,7 @@ function route(resetScroll = true) {
 function updateSearch() {
   const query = search.value.trim();
   const entries = query ? notes.filter(entry => entry.id !== 'study-navigation' && matches(entry, query)) : ['continuity', 'common-maclaurin', 'example-08'].map(id => byId.get(id)).filter(Boolean);
-  if (query && normalize(otherTopics.title).includes(normalize(query.replace('其他', '其它')))) {
+  if (query && otherTopics.points.length && normalize(otherTopics.title).includes(normalize(query.replace('其他', '其它')))) {
     entries.unshift({ ...otherTopics, text: '' });
   }
   if (query) entries.sort((a, b) => Number(normalize(numberedTopicTitle(b.id, b.title)).includes(normalize(query))) - Number(normalize(numberedTopicTitle(a.id, a.title)).includes(normalize(query))));
@@ -406,10 +393,10 @@ function openSearch() {
 document.querySelector('#chapter-nav').innerHTML = groups.map(chapter => `<details class="side-chapter" name="review-directory" data-chapter="${chapter.id}">
   <summary>${safe(chapter.title)}</summary>
   <div class="side-chapter-body">${chapter.sections.map(sectionLink).join('')}</div>
-</details>`).join('') + `<details class="side-chapter" name="review-directory" data-chapter="${otherTopics.id}">
+</details>`).join('') + (otherTopics.points.length ? `<details class="side-chapter" name="review-directory" data-chapter="${otherTopics.id}">
   <summary>其它考点</summary>
   <div class="side-chapter-body"><a href="#${otherTopics.id}">查看全部</a>${pointLinks(otherTopics.points)}</div>
-</details>`;
+</details>` : '');
 document.querySelector('#index-nav').innerHTML = '<a href="#papers">历年真题</a>' + indexes.map(id => byId.get(id)).filter(Boolean).map(entry => `<a href="#${entry.id}">${safe(entry.title)}</a>`).join('');
 document.querySelector('#skip-main').addEventListener('click', event => {
   event.preventDefault(); main.focus();
